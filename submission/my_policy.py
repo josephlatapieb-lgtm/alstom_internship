@@ -24,11 +24,16 @@ class MyPolicy:
         self.agent = ActorCritic(obs_size=36, n_actions=5).to(device)
         try:
             checkpoint_path = os.path.join(os.path.dirname(__file__), "checkpoint.pt")
-            checkpoint = torch.load(checkpoint_path, map_location=device)
-            self.agent.load_state_dict(checkpoint['model'], strict=True)
-            self.agent.eval()
-        except FileNotFoundError:
-            print("⚠️ Aucun checkpoint trouvé, démarrage avec poids aléatoires")
+            if os.path.exists(checkpoint_path):
+                checkpoint = torch.load(checkpoint_path, map_location=device)
+                self.agent.load_state_dict(checkpoint['model'], strict=False)
+                self.agent.eval()
+                print("✅ Checkpoint chargé avec succès")
+            else:
+                print("⚠️ Checkpoint non trouvé, démarrage avec poids aléatoires")
+        except Exception as e:
+            print(f"❌ Erreur lors du chargement du checkpoint: {e}")
+            print("Démarrage avec poids aléatoires")
 
     def act(self, obs, env=None):
         return self.agent.act(obs)
