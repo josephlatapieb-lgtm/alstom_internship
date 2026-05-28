@@ -1,19 +1,32 @@
 import torch
-from reinforcement_learning.my_policy import ActorCritic
+import torch.nn as nn
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+class ActorCritic(nn.Module):
+    def __init__(self, obs_size, n_actions):
+        super(ActorCritic, self).__init__()
+        self.trunk = nn.Sequential(
+            nn.Linear(obs_size, 128), nn.ReLU(),
+            nn.Linear(128, 128), nn.ReLU(),
+            nn.Linear(128, 128), nn.ReLU()
+        )
+        self.policy_head = nn.Linear(128, n_actions)
+        self.value_head = nn.Linear(128, 1)
+
+    def act(self, obs):
+        obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0).to(device)
+        return self.policy_head(self.trunk(obs_tensor)).argmax().item()
 
 class MyPolicy:
     def __init__(self):
-        self.agent = ActorCritic(obs_size=36, n_actions=5)
+        self.agent = ActorCritic(obs_size=36, n_actions=5).to(device)
+        try:
+            checkpoint = torch.load("submission/checkpoint.pt", map_location=device)
+            self.agent.load_state_dict(checkpoint['model'], strict=True)
+            self.agent.eval()
+        except FileNotFoundError:
+            print("⚠️ Aucun checkpoint trouvé, démarrage avec poids aléatoires")
 
-        checkpoint = torch.load("submission/checkpoint.pt", map_location="cpu")
-        self.agent.load_state_dict(checkpoint["model"])
-        self.agent.eval()
-
-    def act(self, obs, env):
-        actions = {}
-        for h in env.get_agent_handles():
-            if obs[h] is not None:
-                actions[h] = self.agent.act(obs[h])
-            else:
-                actions[h] = 0
-        return actions
+    def act(self, obs, env=None):
+        return self.agent.act(obs)

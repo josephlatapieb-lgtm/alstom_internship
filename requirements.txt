@@ -1,0 +1,3 @@
+flatland-rl==4.0.3
+numpy==1.21.6
+networkx==2.6.3

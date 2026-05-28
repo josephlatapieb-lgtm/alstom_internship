@@ -1,66 +1,39 @@
-import os
-import torch
-import numpy as np
+import os, sys
+sys.path.append(os.getcwd())
 
 from flatland.envs.rail_env import RailEnv
 from flatland.envs.rail_generators import sparse_rail_generator
 from flatland.envs.line_generators import sparse_line_generator
-from reinforcement_learning.my_policy import ActorCritic
-from reinforcement_learning.my_observation_builder import MyObservationBuilder
+from submission.my_observation_builder import MyObservationBuilder
+from submission.my_policy import MyPolicy
 
-print("🤖 Initialisation de l'environnement...")
-obs_builder = MyObservationBuilder()
 env = RailEnv(
-    width=100, height=100,
-    rail_generator=sparse_rail_generator(max_num_cities=2, seed=42),
-    line_generator=sparse_line_generator(), 
-    number_of_agents=10,
-    obs_builder_object=obs_builder
+    width=25, height=25,
+    rail_generator=sparse_rail_generator(max_num_cities=2, seed=1),
+    line_generator=sparse_line_generator(),
+    number_of_agents=1,
+    obs_builder_object=MyObservationBuilder()
 )
 
-# Initialisation de l'agent
-agent = ActorCritic(obs_size=36, n_actions=5)
-checkpoint_path = "./submission/checkpoint.pt"
+policy = MyPolicy()
+print("🚂 Test de la politique chargée...")
 
-# --- Chargement automatique (sans confirmation) ---
-if os.path.exists(checkpoint_path):
-    print(f"📂 Savoir trouvé ! Chargement automatique du checkpoint : {checkpoint_path}")
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
-    agent.load_state_dict(checkpoint['model'])
-    print("✅ Le savoir a été chargé avec succès, poursuite de l'entraînement...")
-else:
-    print("🆕 Aucun checkpoint trouvé, l'IA commence son apprentissage à zéro.")
+for episode in range(3):
+    reset_result = env.reset()
+    obs = reset_result[0] if isinstance(reset_result, tuple) else reset_result
+    done = {"__all__": False}
+    total_reward = 0
 
-# --- BOUCLE D'ENTRAÎNEMENT ---
-# On boucle jusqu'à 50 000
-for episode in range(1, 50001):
-    obs, info = env.reset()
-    score_total = 0
-    
-    for step in range(100):
-        # Vérification dimension (uniquement au premier pas)
-        if episode == 1 and step == 0 and obs[0] is not None:
-            taille_reelle = len(obs[0])
-            taille_attendue = agent.obs_size + agent.n_actions
-            print(f"🔍 Vérification dimension : réelle={taille_reelle}, attendue={taille_attendue}")
+    while not done["__all__"]:
+        actions = {}
+        for handle in env.get_agent_handles():
+            if obs[handle] is not None:
+                actions[handle] = policy.act(obs[handle])
+            else:
+                actions[handle] = 0
+        obs, rewards, done, info = env.step(actions)
+        total_reward += sum(rewards.values())
 
-        # Action de chaque agent
-        actions = {h: (agent.act(obs[h]) if obs[h] is not None else 0) for h in env.get_agent_handles()}
-        next_obs, rewards, dones, info = env.step(actions)
-        
-        score_total += sum(rewards.values())
-        obs = next_obs
-        if dones['__all__']: break
-    
-    # Affichage régulier pour suivre l'évolution
-    if episode % 100 == 0 or episode == 1:
-        print(f"Épisode {episode}/50000 - Score total : {score_total:.2f}")
-    
-    # Sauvegarde automatique à chaque palier (fréquence augmentée pour sécurité)
-    if episode % 1000 == 0:
-        torch.save({"model": agent.state_dict()}, checkpoint_path)
-        print(f"💾 Sauvegarde effectuée : épisode {episode}")
+    print(f"Épisode {episode+1} - Reward total : {total_reward:.2f}")
 
-# Sauvegarde finale à la fin du script
-torch.save({"model": agent.state_dict()}, checkpoint_path)
-print("✨ Entraînement terminé et état final sauvegardé !")
+print("✅ Test terminé.")
