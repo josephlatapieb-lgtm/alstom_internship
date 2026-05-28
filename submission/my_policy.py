@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 
@@ -22,7 +23,8 @@ class MyPolicy:
     def __init__(self):
         self.agent = ActorCritic(obs_size=36, n_actions=5).to(device)
         try:
-            checkpoint = torch.load("submission/checkpoint.pt", map_location=device)
+            checkpoint_path = os.path.join(os.path.dirname(__file__), "checkpoint.pt")
+            checkpoint = torch.load(checkpoint_path, map_location=device)
             self.agent.load_state_dict(checkpoint['model'], strict=True)
             self.agent.eval()
         except FileNotFoundError:
