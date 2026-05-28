@@ -15,7 +15,7 @@ class MyObservationBuilder(ObservationBuilder):
             obs[1] = agent.position[1] / max(1, self.env.height)
 
         # Direction (4 features - one-hot)
-        if agent.direction is not None:
+        if agent.direction is not None and 0 <= agent.direction < 4:
             obs[2 + agent.direction] = 1.0
 
         # Target normalisé (2 features)
@@ -31,11 +31,12 @@ class MyObservationBuilder(ObservationBuilder):
 
         # Infos du chemin si disponible (14 features)
         if hasattr(agent, 'path') and agent.path and len(agent.path) > 0:
-            # Encodage simple du chemin les 7 prochaines étapes
             for i in range(min(7, len(agent.path))):
-                next_pos = agent.path[i]
-                obs[9 + i*2] = next_pos[0] / max(1, self.env.width)
-                obs[10 + i*2] = next_pos[1] / max(1, self.env.height)
+                try:
+                    next_pos = agent.path[i]
+                    obs[9 + i*2] = next_pos[0] / max(1, self.env.width)
+                    obs[10 + i*2] = next_pos[1] / max(1, self.env.height)
+                except (TypeError, IndexError):
+                    pass
 
-        # Padding jusqu'à 36
         return obs

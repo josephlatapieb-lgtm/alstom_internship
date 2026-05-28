@@ -16,8 +16,9 @@ class ActorCritic(nn.Module):
         self.value_head = nn.Linear(128, 1)
 
     def act(self, obs):
-        obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0).to(device)
-        return self.policy_head(self.trunk(obs_tensor)).argmax().item()
+        with torch.no_grad():
+            obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0).to(device)
+            return self.policy_head(self.trunk(obs_tensor)).argmax().item()
 
 class MyPolicy:
     def __init__(self):
