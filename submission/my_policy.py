@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -17,24 +18,31 @@ class ActorCritic(nn.Module):
 
     def act(self, obs):
         with torch.no_grad():
+            if isinstance(obs, list):
+                obs = np.array(obs, dtype=np.float32)
             obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0).to(device)
-            return self.policy_head(self.trunk(obs_tensor)).argmax().item()
+            logits = self.policy_head(self.trunk(obs_tensor))
+            return int(logits.argmax(dim=1).item())
 
 class MyPolicy:
     def __init__(self):
         self.agent = ActorCritic(obs_size=36, n_actions=5).to(device)
-        try:
-            checkpoint_path = os.path.join(os.path.dirname(__file__), "checkpoint.pt")
-            if os.path.exists(checkpoint_path):
+        self.agent.eval()
+
+        checkpoint_path = os.path.join(os.path.dirname(__file__), "checkpoint.pt")
+
+        if os.path.exists(checkpoint_path):
+            try:
                 checkpoint = torch.load(checkpoint_path, map_location=device)
                 self.agent.load_state_dict(checkpoint['model'], strict=False)
-                self.agent.eval()
-                print("✅ Checkpoint chargé avec succès")
-            else:
-                print("⚠️ Checkpoint non trouvé, démarrage avec poids aléatoires")
-        except Exception as e:
-            print(f"❌ Erreur lors du chargement du checkpoint: {e}")
-            print("Démarrage avec poids aléatoires")
+            except Exception as e:
+                print(f"Warning: Could not load checkpoint: {e}")
+        else:
+            print(f"Warning: Checkpoint not found at {checkpoint_path}")
 
     def act(self, obs, env=None):
-        return self.agent.act(obs)
+        try:
+            return self.agent.act(obs)
+        except Exception as e:
+            print(f"Error in act(): {e}")
+            return 0
