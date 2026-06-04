@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# AJOUTE CETTE LIGNE ICI
+COPY . .
+
 COPY submission/ submission/
 
 ENV POLICY=submission.my_policy.MyPolicy
